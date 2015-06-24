@@ -1,0 +1,7 @@
+This package allows basic mapping from shapefile data from OpenStreetMaps or Mapzen.
+
+Other data can be transformed and overlayed on the map for analysis.
+
+Map views are plotting from shapefiles which can be very large, but this forgoes the need for tiles, tileservers, or any kind of precompilation
+
+ 
