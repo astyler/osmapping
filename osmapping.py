@@ -7,8 +7,8 @@ import numpy as np
 import fiona as fio
 from matplotlib.collections import PathCollection
 from mpl_toolkits.basemap import Basemap
-from matplotlib.patches import Path
-
+from matplotlib.patches import Path, Rectangle
+from matplotlib.transforms import Bbox
 
 # haversine function courtesy of https://gist.github.com/rochacbruno/2883505
 def haversine(origin, destination):
@@ -53,11 +53,16 @@ def create_basemap(ll_lon, ll_lat, ur_lon, ur_lat):
 
 
 class MLMap(object):
+
     def __init__(self, lower_left_corner, upper_right_corner):
         self.basemap = create_basemap(lower_left_corner[0], lower_left_corner[1], upper_right_corner[0],
                                       upper_right_corner[1])
         self.shapes = pd.DataFrame()
         self.shapes_to_draw = []
+        llc = self.basemap(lower_left_corner[0],lower_left_corner[1])
+        urc = self.basemap(upper_right_corner[0],upper_right_corner[1])
+
+        self.bbox = Bbox([llc, urc])
 
     def convert_coordinates(self, coordinates):
         return np.array([self.basemap(lat, lon) for lat, lon in coordinates])
@@ -66,7 +71,7 @@ class MLMap(object):
         shape_file = fio.open(file_name)
 
         paths = []
-
+        properties = []
         for shape in shape_file:
             if shape['geometry']['type'] == 'Polygon':
                 path = Path(self.convert_coordinates(shape['geometry']['coordinates'][0]), readonly=True)
@@ -75,9 +80,11 @@ class MLMap(object):
             else:
                 path = None
 
-            paths.append(path)
+            if path is not None and path.intersects_bbox(self.bbox):
+                properties.append(shape['properties'])
+                paths.append(path)
 
-        new_shapes = pd.DataFrame(shape['properties'] for shape in shape_file)
+        new_shapes = pd.DataFrame(properties)
         new_shapes['path'] = paths
 
         new_shapes = new_shapes[new_shapes.path.notnull()]
